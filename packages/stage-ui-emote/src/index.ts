@@ -1,0 +1,7 @@
+export { EmoteCanvas, EmoteModel } from './components/scenes/emote'
+export { default as EmoteScene } from './components/scenes/Emote.vue'
+export * from './composables/emote'
+export * from './constants/emotions'
+export * from './stores'
+export * from './utils/emote-loader'
+export * from './utils/emote-preview'
