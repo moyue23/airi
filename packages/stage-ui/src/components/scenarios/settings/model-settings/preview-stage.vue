@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ModelSettingsRuntimeSnapshot } from './runtime'
 
+import { EmoteScene } from '@proj-airi/stage-ui-emote'
 import { Live2DScene } from '@proj-airi/stage-ui-live2d'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene, useModelStore } from '@proj-airi/stage-ui-three'
@@ -29,6 +30,7 @@ const modelStore = useModelStore()
 const live2dSceneRef = ref<{ canvasElement: () => HTMLCanvasElement | undefined }>()
 const vrmSceneRef = ref<{ canvasElement: () => HTMLCanvasElement | undefined }>()
 const spineSceneRef = ref<{ canvasElement: () => HTMLCanvasElement | undefined }>()
+const emoteSceneRef = ref<{ canvasElement: () => HTMLCanvasElement | undefined }>()
 const live2dComponentState = ref<'pending' | 'loading' | 'mounted'>('pending')
 const spineComponentState = ref<'pending' | 'loading' | 'mounted'>('pending')
 const vrmPreviewStageInstanceId = `model-settings-preview-stage:${Math.random().toString(36).slice(2, 10)}`
@@ -80,6 +82,9 @@ async function capturePreviewFrame() {
   if (stageModelRenderer.value === 'spine')
     return captureCanvasFrame(spineSceneRef.value?.canvasElement())
 
+  if (stageModelRenderer.value === 'emote')
+    return captureCanvasFrame(emoteSceneRef.value?.canvasElement())
+
   return undefined
 }
 
@@ -122,6 +127,18 @@ const runtimeSnapshot = computed<ModelSettingsRuntimeSnapshot>(() => {
       controlsLocked: hasModel ? phase !== 'mounted' : false,
       previewAvailable: hasModel,
       canCapturePreview: !!spineSceneRef.value?.canvasElement(),
+      updatedAt: Date.now(),
+    })
+  }
+
+  if (stageModelRenderer.value === 'emote') {
+    return createEmptyModelSettingsRuntimeSnapshot({
+      ownerInstanceId: vrmPreviewStageInstanceId,
+      renderer: 'emote',
+      phase: hasModel ? 'mounted' : 'no-model',
+      controlsLocked: false,
+      previewAvailable: hasModel,
+      canCapturePreview: !!emoteSceneRef.value?.canvasElement(),
       updatedAt: Date.now(),
     })
   }
@@ -188,6 +205,16 @@ const cursorPosition = computed(() => ({
         :idle-animation-enabled="spineIdleAnimationEnabled"
         :max-fps="spineMaxFps"
         :render-scale="spineRenderScale"
+      />
+    </div>
+  </template>
+  <template v-if="stageModelRenderer === 'emote'">
+    <div :class="spineSceneClassList">
+      <EmoteScene
+        ref="emoteSceneRef"
+        :model-src="stageModelSelectedUrl"
+        :model-id="stageModelSelected"
+        :cursor-position="cursorPosition"
       />
     </div>
   </template>

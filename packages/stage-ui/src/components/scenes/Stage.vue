@@ -11,6 +11,7 @@ import { sleep } from '@moeru/std'
 import { createLive2DLipSync } from '@proj-airi/model-driver-lipsync'
 import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import { createPlaybackManager, createSpeechPipeline, normalizeActPayload } from '@proj-airi/pipelines-audio'
+import { EmoteScene } from '@proj-airi/stage-ui-emote'
 import { Live2DScene, useLive2dParams } from '@proj-airi/stage-ui-live2d'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene } from '@proj-airi/stage-ui-three'
@@ -65,6 +66,7 @@ const { getDb } = useDuckDb()
 const vrmViewerRef = ref<InstanceType<typeof ThreeScene>>()
 const live2dSceneRef = ref<InstanceType<typeof Live2DScene>>()
 const spineSceneRef = ref<InstanceType<typeof SpineScene>>()
+const emoteSceneRef = ref<InstanceType<typeof EmoteScene>>()
 
 const settingsStore = useSettings()
 const {
@@ -179,6 +181,9 @@ const emotionsQueue = createQueue<EmotionPayload>({
       }
       else if (stageModelRenderer.value === 'spine') {
         spineSceneRef.value?.setEmotion(ctx.data.name, ctx.data.intensity)
+      }
+      else if (stageModelRenderer.value === 'emote') {
+        emoteSceneRef.value?.setEmotion(ctx.data.name, ctx.data.intensity)
       }
     },
   ],
@@ -879,6 +884,8 @@ function canvasElement() {
 
   else if (stageModelRenderer.value === 'spine')
     return spineSceneRef.value?.canvasElement()
+  else if (stageModelRenderer.value === 'emote')
+    return emoteSceneRef.value?.canvasElement()
 }
 
 function readRenderTargetRegionAtClientPoint(clientX: number, clientY: number, radius: number) {
@@ -893,7 +900,11 @@ async function captureFrame() {
     ? live2dSceneRef.value?.captureFrame()
     : stageModelRenderer.value === 'vrm'
       ? vrmViewerRef.value?.captureFrame()
-      : spineSceneRef.value?.captureFrame())
+      : stageModelRenderer.value === 'spine'
+        ? spineSceneRef.value?.captureFrame()
+        : stageModelRenderer.value === 'emote'
+          ? emoteSceneRef.value?.captureFrame()
+          : undefined)
 
   if (!activeBackgroundUrl.value || !charBlob)
     return charBlob
@@ -1025,6 +1036,18 @@ defineExpose({
         :idle-animation-enabled="spineIdleAnimationEnabled"
         :max-fps="spineMaxFps"
         :render-scale="spineRenderScale"
+      />
+      <EmoteScene
+        v-if="stageModelRenderer === 'emote' && showStage"
+        ref="emoteSceneRef"
+        v-model:state="componentState"
+        min-w="50% <lg:full" min-h="100 sm:100"
+        h-full w-full flex-1
+        :model-src="stageModelSelectedUrl"
+        :model-id="stageModelSelected"
+        :mouth-open-size="mouthOpenSize"
+        :cursor-position="cursorPosition"
+        :paused="paused"
       />
       <div
         v-if="stageModelRenderer === 'godot'"

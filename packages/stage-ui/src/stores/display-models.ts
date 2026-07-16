@@ -13,6 +13,7 @@ export enum DisplayModelFormat {
   PMXZip = 'pmx-zip',
   PMXDirectory = 'pmx-directory',
   PMD = 'pmd',
+  EmotePsb = 'emote-psb',
 }
 
 export type DisplayModel
@@ -52,6 +53,7 @@ const displayModelsPresets: DisplayModel[] = [
   { id: 'preset-live2d-2', format: DisplayModelFormat.Live2dZip, type: 'url', url: presetLive2dFreeUrl, name: 'Hiyori (Free)', previewImage: presetLive2dPreview, importedAt: 1733113886840 },
   { id: 'preset-vrm-1', format: DisplayModelFormat.VRM, type: 'url', url: presetVrmAvatarAUrl, name: 'AvatarSample_A', previewImage: presetVrmAvatarAPreview, importedAt: 1733113886840 },
   { id: 'preset-vrm-2', format: DisplayModelFormat.VRM, type: 'url', url: presetVrmAvatarBUrl, name: 'AvatarSample_B', previewImage: presetVrmAvatarBPreview, importedAt: 1733113886840 },
+  { id: 'preset-emote-1', format: DisplayModelFormat.EmotePsb, type: 'url', url: '/models/emote/isla_aa_merged.psb', name: 'Isla (E-mote)', importedAt: 1733113886840 },
 ]
 
 export const useDisplayModelsStore = defineStore('display-models', () => {
@@ -60,6 +62,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
   let generateLive2DPreview: (file: File) => Promise<string | undefined>
   let generateVrmPreview: (file: File) => Promise<string | undefined>
   let generateSpinePreview: (file: File) => Promise<string | undefined>
+  let generateEmotePreview: (file: File) => Promise<string | undefined>
 
   const displayModelsFromIndexedDBLoading = ref(false)
 
@@ -108,6 +111,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
   const loadLive2DModelPreview = (file: File) => generateLive2DPreview(file)
   const loadVrmModelPreview = (file: File) => generateVrmPreview(file)
   const loadSpineModelPreview = (file: File) => generateSpinePreview(file)
+  const loadEmoteModelPreview = (file: File) => generateEmotePreview(file)
 
   async function addDisplayModel(format: DisplayModelFormat, file: File) {
     await until(displayModelsFromIndexedDBLoading).toBe(false)
@@ -123,6 +127,10 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     }
     else if (format === DisplayModelFormat.SpineZip) {
       const previewImage = await loadSpineModelPreview(file)
+      newDisplayModel.previewImage = previewImage
+    }
+    else if (format === DisplayModelFormat.EmotePsb) {
+      const previewImage = await loadEmoteModelPreview(file)
       newDisplayModel.previewImage = previewImage
     }
 
@@ -187,10 +195,12 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     const { loadLive2DModelPreview } = await import('@proj-airi/stage-ui-live2d/utils/live2d-preview')
     const { loadVrmModelPreview } = await import('@proj-airi/stage-ui-three/utils/vrm-preview')
     const { loadSpineModelPreview } = await import('@proj-airi/stage-ui-spine/utils/spine-preview')
+    const { loadEmoteModelPreview } = await import('@proj-airi/stage-ui-emote/utils/emote-preview')
 
     generateLive2DPreview = loadLive2DModelPreview
     generateVrmPreview = loadVrmModelPreview
     generateSpinePreview = loadSpineModelPreview
+    generateEmotePreview = loadEmoteModelPreview
   }
 
   return {

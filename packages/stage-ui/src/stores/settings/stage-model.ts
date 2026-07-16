@@ -7,7 +7,7 @@ import { computed, watch } from 'vue'
 
 import { DisplayModelFormat, useDisplayModelsStore } from '../display-models'
 
-export type StageModelRenderer = 'live2d' | 'vrm' | 'spine' | 'godot' | 'disabled' | undefined
+export type StageModelRenderer = 'live2d' | 'vrm' | 'spine' | 'emote' | 'godot' | 'disabled' | undefined
 type BuiltInStageModelRenderer = Exclude<StageModelRenderer, 'godot'>
 
 export const useSettingsStageModel = defineStore('settings-stage-model', () => {
@@ -54,6 +54,8 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
         return 'vrm'
       case DisplayModelFormat.SpineZip:
         return 'spine'
+      case DisplayModelFormat.EmotePsb:
+        return 'emote'
       default:
         return 'disabled'
     }

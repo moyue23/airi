@@ -17,6 +17,7 @@ export default defineConfig({
     'crowdin.yml',
     '**/assets/js/**',
     '**/assets/live2d/models/**',
+    '**/public/driver/**',
     'apps/stage-tamagotchi/out/**',
     'apps/stage-tamagotchi/src/bindings/**',
     'apps/stage-tamagotchi-electron/out/**',

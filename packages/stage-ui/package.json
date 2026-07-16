@@ -87,6 +87,7 @@
     "@proj-airi/server-sdk": "workspace:^",
     "@proj-airi/server-sdk-shared": "workspace:^",
     "@proj-airi/stage-shared": "workspace:^",
+    "@proj-airi/stage-ui-emote": "workspace:^",
     "@proj-airi/stage-ui-live2d": "workspace:^",
     "@proj-airi/stage-ui-spine": "workspace:^",
     "@proj-airi/stage-ui-three": "workspace:^",

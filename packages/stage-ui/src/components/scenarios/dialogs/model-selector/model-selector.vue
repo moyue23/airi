@@ -118,6 +118,16 @@ async function handleAddSpineModel(file: FileList | null) {
   highlightDisplayModelCard.value = displayModel.id
 }
 
+async function handleAddEmoteModel(file: FileList | null) {
+  if (file === null || file.length === 0)
+    return
+  if (!file[0].name.endsWith('.psb'))
+    return
+
+  const displayModel = await displayModelStore.addDisplayModel(DisplayModelFormat.EmotePsb, file[0])
+  highlightDisplayModelCard.value = displayModel.id
+}
+
 const mapFormatRenderer: Record<DisplayModelFormat, string> = {
   [DisplayModelFormat.Live2dZip]: 'Live2D',
   [DisplayModelFormat.Live2dDirectory]: 'Live2D',
@@ -126,15 +136,18 @@ const mapFormatRenderer: Record<DisplayModelFormat, string> = {
   [DisplayModelFormat.PMXDirectory]: 'MMD',
   [DisplayModelFormat.PMXZip]: 'MMD',
   [DisplayModelFormat.PMD]: 'MMD',
+  [DisplayModelFormat.EmotePsb]: 'E-mote',
 }
 
 const live2dDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
 const vrmDialog = useFileDialog({ accept: '.vrm', multiple: false, reset: true })
 const spineDialog = useFileDialog({ accept: '.zip', multiple: false, reset: true })
+const emoteDialog = useFileDialog({ accept: '.psb', multiple: false, reset: true })
 
 live2dDialog.onChange(handleAddLive2DModel)
 vrmDialog.onChange(handleAddVRMModel)
 spineDialog.onChange(handleAddSpineModel)
+emoteDialog.onChange(handleAddEmoteModel)
 </script>
 
 <template>
@@ -204,6 +217,17 @@ spineDialog.onChange(handleAddSpineModel)
                 transition="colors duration-200 ease-in-out" @click="spineDialog.open()"
               >
                 Spine
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                :class="[
+                  'data-[disabled]:text-mauve8 relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 leading-none outline-none data-[disabled]:pointer-events-none',
+                  'text-base sm:text-sm',
+                  'data-[highlighted]:bg-primary-300/20 dark:data-[highlighted]:bg-primary-100/20',
+                  'data-[highlighted]:text-primary-400 dark:data-[highlighted]:text-primary-200',
+                ]"
+                transition="colors duration-200 ease-in-out" @click="emoteDialog.open()"
+              >
+                E-mote
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenuPortal>
