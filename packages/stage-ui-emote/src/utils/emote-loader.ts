@@ -6,6 +6,10 @@
  * constructors on `window`. They are not ES modules and must be
  * injected via `<script>` tags.
  *
+ * FreeMoteDriver.js is compiled asm.js that expects a global `Module`
+ * object to be set BEFORE it executes, and it uses the Emscripten `GL`
+ * global for WebGL context management.
+ *
  * This loader ensures the scripts are injected exactly once and
  * resolves once `window.EmotePlayer` is available.
  */
@@ -28,7 +32,7 @@ const DRIVER_SCRIPTS = [
  * these interfaces only cover the methods we call from AIRI.
  */
 export interface EmotePlayerInstance {
-  playerId: number
+  playerId: number | null
   initialized: boolean
   mainTimelineLabels: string[]
   scale: number
@@ -36,25 +40,31 @@ export interface EmotePlayerInstance {
   isCharaProfileAvailable: boolean
   charaBounds: { left: number, top: number, right: number, bottom: number }
 
-  loadData: (data: Uint8Array) => void
-  unloadData: () => void
-  promiseLoadDataFromURL: (url: string) => Promise<void>
-  setVariable: (name: string, value: number, duration?: number) => void
-  playTimeline: (label: string, flags?: number) => void
-  setScale: (scale: number, duration?: number) => void
-  setCoord: (x: number, y: number, duration?: number) => void
-  pause?: () => void
-  resume?: () => void
-  on: (event: string, callback: () => void) => void
-  off: (event: string, callback: () => void) => void
+  promiseLoadDataFromURL(...urls: string[]): Promise<void>
+  loadData(...files: Uint8Array[]): void
+  unloadData(): void
+  setVariable(name: string, value: number, duration?: number): void
+  playTimeline(label: string, flags?: number): void
+  setScale(scale: number, duration?: number): void
+  setCoord(x: number, y: number, duration?: number): void
+  pause?(): void
+  resume?(): void
+  on(event: string, callback: () => void): void
+  off(event: string, callback: () => void): void
 }
 
 function injectScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // Already loaded?
-    const existing = document.querySelector(`script[src="${src}"]`)
+    const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null
     if (existing) {
-      resolve()
+      if (existing.readyState && existing.readyState !== 'complete') {
+        existing.addEventListener('load', () => resolve())
+        existing.addEventListener('error', () => reject(new Error(`Failed to load: ${src}`)))
+      }
+      else {
+        resolve()
+      }
       return
     }
 
@@ -82,12 +92,16 @@ export function loadEmoteDriver(): Promise<void> {
     return driverPromise
 
   driverPromise = (async () => {
-    // Set up the Module config required by FreeMoteDriver.js
     const w = window as any
+
+    // Set up the Module config required by FreeMoteDriver.js (Emscripten asm.js)
+    // This MUST be set before the script executes.
     if (!w.Module) {
       w.Module = { TOTAL_MEMORY: 256 * 1024 * 1024 }
     }
 
+    // Inject scripts in order: emoteplayer.js first (defines EmotePlayer/EmoteDevice classes),
+    // then FreeMoteDriver.js (defines the asm.js runtime + GL + exported C functions)
     for (const src of DRIVER_SCRIPTS) {
       await injectScript(src)
     }

@@ -1,6 +1,4 @@
-import type { EmotePlayerInstance } from './emote-loader'
-
-import { loadEmoteDriver } from './emote-loader'
+import { loadEmoteDriver, type EmotePlayerInstance } from './emote-loader'
 
 /**
  * Renders a preview frame of a user-imported PSB model file.
@@ -31,9 +29,11 @@ export async function loadEmoteModelPreview(file: File): Promise<string | undefi
     canvas.style.top = '0'
     document.body.appendChild(canvas)
 
+    // Create hidden render canvas for WebGL
     EP.createRenderCanvas(previewWidth, previewHeight)
     player = new EP(canvas) as EmotePlayerInstance
 
+    // Load model from file via Uint8Array
     const buffer = await file.arrayBuffer()
     const data = new Uint8Array(buffer)
     player.loadData(data)

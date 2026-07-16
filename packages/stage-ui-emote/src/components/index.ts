@@ -1,1 +1,1 @@
-export * from './emote'
+export { default as EmoteScene } from '../scenes/Emote.vue'
