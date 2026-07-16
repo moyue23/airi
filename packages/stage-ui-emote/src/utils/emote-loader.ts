@@ -3,15 +3,16 @@
  *
  * The FreeMoteDriver.js and emoteplayer.js are static script files
  * that define global `EmotePlayer`, `EmoteDevice`, and related
- * constructors on `window`. They are not ES modules and must be
- * injected via `<script>` tags.
+ * constructors. They are not ES modules and must be injected via
+ * `<script>` tags.
  *
- * FreeMoteDriver.js is compiled asm.js that expects a global `Module`
- * object to be set BEFORE it executes, and it uses the Emscripten `GL`
- * global for WebGL context management.
+ * IMPORTANT: `class EmotePlayer` in a classic script creates a global
+ * LEXICAL binding — it is accessible as a bare `EmotePlayer` identifier
+ * but does NOT appear as a property on `window`. We bridge this gap by
+ * injecting an inline script that copies the reference to `window`.
  *
- * This loader ensures the scripts are injected exactly once and
- * resolves once `window.EmotePlayer` is available.
+ * FreeMoteDriver.js is compiled asm.js (Emscripten) that expects a
+ * global `Module` object to be set BEFORE it executes.
  */
 
 let driverLoaded = false
@@ -78,6 +79,24 @@ function injectScript(src: string): Promise<void> {
 }
 
 /**
+ * Bridges global lexical bindings (created by `class` declarations in
+ * classic scripts) to `window` properties so they can be accessed from
+ * module scope.
+ *
+ * `class EmotePlayer` in a classic `<script>` creates a binding in the
+ * global lexical environment. This is accessible as a bare identifier
+ * but NOT as `window.EmotePlayer`. We use an inline script to copy it.
+ */
+function bridgeGlobals(): void {
+  const bridge = document.createElement('script')
+  bridge.textContent = `
+    if (typeof EmotePlayer !== 'undefined' && !window.EmotePlayer) window.EmotePlayer = EmotePlayer;
+    if (typeof EmoteDevice !== 'undefined' && !window.EmoteDevice) window.EmoteDevice = EmoteDevice;
+  `
+  document.head.appendChild(bridge)
+}
+
+/**
  * Loads the E-mote driver scripts (emoteplayer.js + FreeMoteDriver.js)
  * and ensures `window.EmotePlayer` is available.
  *
@@ -106,7 +125,10 @@ export function loadEmoteDriver(): Promise<void> {
       await injectScript(src)
     }
 
-    // Wait for EmotePlayer global to be ready
+    // Bridge global lexical bindings to window properties
+    bridgeGlobals()
+
+    // Verify EmotePlayer is now accessible on window
     if (!w.EmotePlayer) {
       throw new Error('E-mote driver loaded but EmotePlayer global is not available')
     }

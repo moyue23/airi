@@ -34,12 +34,20 @@ async function ensurePlayer() {
     return player
 
   const canvas = canvasRef.value
-  if (!canvas)
+  if (!canvas) {
+    console.warn('[Emote] canvasRef not available yet')
     return null
+  }
 
+  console.info('[Emote] Loading driver scripts...')
   await loadEmoteDriver()
+  console.info('[Emote] Driver scripts loaded')
 
   const EP = (window as any).EmotePlayer
+  if (!EP) {
+    console.error('[Emote] EmotePlayer global not found after driver load')
+    return null
+  }
 
   // Set visible canvas dimensions
   canvas.width = RENDER_WIDTH
@@ -47,21 +55,26 @@ async function ensurePlayer() {
 
   // Create the hidden WebGL render canvas (only once)
   if (!EP.renderCanvas) {
+    console.info('[Emote] Creating render canvas...')
     EP.createRenderCanvas(RENDER_WIDTH, RENDER_HEIGHT)
   }
 
   // Create player with the visible canvas
+  console.info('[Emote] Creating EmotePlayer instance...')
   player = new EP(canvas) as EmotePlayerInstance
   playerCreated = true
+  console.info('[Emote] EmotePlayer created, initialized:', player.initialized)
   return player
 }
 
 async function loadModel(url: string) {
+  console.info('[Emote] Loading model from:', url)
   componentState.value = 'loading'
 
   try {
     const p = await ensurePlayer()
     if (!p) {
+      console.warn('[Emote] Player not available')
       componentState.value = 'pending'
       return
     }
@@ -72,7 +85,9 @@ async function loadModel(url: string) {
     }
 
     // Load model from URL
+    console.info('[Emote] Fetching PSB data...')
     await p.promiseLoadDataFromURL(url)
+    console.info('[Emote] Model loaded, initialized:', p.initialized, 'charaProfile:', p.isCharaProfileAvailable)
 
     // Auto-center the model
     if (p.isCharaProfileAvailable) {
