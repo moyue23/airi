@@ -29,6 +29,52 @@ let playerCreated = false
 const RENDER_WIDTH = 1024
 const RENDER_HEIGHT = 1024
 
+// --- Gaze variable discovery ---
+// E-mote models expose named variables via `player.variableList`.
+// Variable names differ per model, so we discover them by keyword matching,
+// mirroring the semantic_rules from the original Emote_Widget config.
+interface GazeVariable {
+  name: string
+  min: number
+  max: number
+}
+
+const SEMANTIC_RULES = [
+  { tag: 'HEAD_LR', keywords: ['head_lr', 'angle_x', 'head_x'] },
+  { tag: 'HEAD_UD', keywords: ['head_ud', 'angle_y', 'head_y'] },
+  { tag: 'EYE_LR', keywords: ['eye_lr', 'eyeball_x'] },
+  { tag: 'EYE_UD', keywords: ['eye_ud', 'eyeball_y'] },
+  { tag: 'MOUTH_OPEN', keywords: ['mouth_talk', 'face_talk', 'mouth_open'] },
+] as const
+
+let gazeVars: Record<string, GazeVariable> = {}
+
+function discoverGazeVariables() {
+  gazeVars = {}
+  if (!player?.initialized)
+    return
+
+  const anyPlayer = player as any
+  const vars: Array<{ label: string, minValue: number, maxValue: number }> = anyPlayer.variableList || []
+
+  for (const v of vars) {
+    const labelLower = v.label.toLowerCase()
+    for (const rule of SEMANTIC_RULES) {
+      if (rule.keywords.some(kw => labelLower.includes(kw))) {
+        gazeVars[rule.tag] = { name: v.label, min: v.minValue, max: v.maxValue }
+        console.info(`[Emote] Mapped ${rule.tag} -> "${v.label}" [${v.minValue}, ${v.maxValue}]`)
+        break
+      }
+    }
+  }
+}
+
+function mapToRange(normalized: number, v: GazeVariable): number {
+  const center = (v.max + v.min) / 2
+  const amplitude = (v.max - v.min) / 2
+  return center + normalized * amplitude
+}
+
 async function ensurePlayer() {
   if (playerCreated && player)
     return player
@@ -89,6 +135,9 @@ async function loadModel(url: string) {
     await p.promiseLoadDataFromURL(url)
     console.info('[Emote] Model loaded, initialized:', p.initialized, 'charaProfile:', p.isCharaProfileAvailable)
 
+    // Discover gaze variables from the model's variable list
+    discoverGazeVariables()
+
     // Auto-center the model
     if (p.isCharaProfileAvailable) {
       const bounds = p.charaBounds
@@ -126,19 +175,38 @@ watch(() => props.modelSrc, (src) => {
 })
 
 watch(() => props.mouthOpenSize, (v) => {
-  if (player && v !== undefined) {
+  if (!player || v === undefined)
+    return
+  const mouthVar = gazeVars.MOUTH_OPEN
+  if (mouthVar) {
+    const range = mouthVar.max - mouthVar.min
+    player.setVariable(mouthVar.name, mouthVar.min + v * range, 50)
+  }
+  else {
+    // Fallback: try common name with 0-30 range
     player.setVariable('mouth_open', v * 30, 50)
   }
 })
 
 watch(() => props.cursorPosition, (pos) => {
-  if (player && pos) {
-    const x = (pos.x / window.innerWidth) * 2 - 1
-    const y = (pos.y / window.innerHeight) * 2 - 1
-    player.setVariable('head_lr', x * 30, 100)
-    player.setVariable('head_ud', y * 30, 100)
-  }
-})
+  if (!player || !pos)
+    return
+
+  const x = (pos.x / window.innerWidth) * 2 - 1
+  const y = (pos.y / window.innerHeight) * 2 - 1
+
+  // Head movement
+  if (gazeVars.HEAD_LR)
+    player.setVariable(gazeVars.HEAD_LR.name, mapToRange(x, gazeVars.HEAD_LR), 100)
+  if (gazeVars.HEAD_UD)
+    player.setVariable(gazeVars.HEAD_UD.name, mapToRange(y, gazeVars.HEAD_UD), 100)
+
+  // Eye movement
+  if (gazeVars.EYE_LR)
+    player.setVariable(gazeVars.EYE_LR.name, mapToRange(x, gazeVars.EYE_LR), 100)
+  if (gazeVars.EYE_UD)
+    player.setVariable(gazeVars.EYE_UD.name, mapToRange(y, gazeVars.EYE_UD), 100)
+}, { deep: true })
 
 onUnmounted(() => {
   player?.unloadData?.()
@@ -171,6 +239,10 @@ defineExpose({
     player?.setCoord(x, y, duration ?? 0)
   },
   listTimelines: () => player?.mainTimelineLabels ?? [],
+  listVariables: () => {
+    const anyPlayer = player as any
+    return anyPlayer?.variableList ?? []
+  },
 })
 </script>
 
